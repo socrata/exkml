@@ -186,17 +186,17 @@ defmodule Exkml do
     end)
   end
 
-  def maybe_put(map, _, nil), do: map
-  def maybe_put(map, name, value), do: Map.put(map, name, value)
+  def maybe_put_charlist(map, _, nil), do: map
+  def maybe_put_charlist(map, name, value), do: Map.put(map, name, :erlang.list_to_binary(value))
 
 
   defp to_placemark({_, pm}) do
     with geoms when is_list(geoms) <- extract_geoms(pm) do
       attrs = (simple_data_to_attrs(pm) ++ data_to_attrs(pm))
       |> Enum.into(%{})
-      |> maybe_put("name", xpath(pm, ~x"//Placemark/name/text()"))
-      |> maybe_put("description", xpath(pm, ~x"//Placemark/description/text()"))
-      |> maybe_put("snippet", xpath(pm, ~x"//Placemark/snippet/text()"))
+      |> maybe_put_charlist("name", xpath(pm, ~x"//Placemark/name/text()"))
+      |> maybe_put_charlist("description", xpath(pm, ~x"//Placemark/description/text()"))
+      |> maybe_put_charlist("snippet", xpath(pm, ~x"//Placemark/snippet/text()"))
 
       {geoms, attrs}
     end
