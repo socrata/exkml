@@ -49,6 +49,7 @@ defmodule Exkml do
 
   defp str_to_point(point_str) do
     point_str
+    |> String.trim
     |> String.split(",")
     |> do_str_to_point
     |> case do
@@ -59,21 +60,25 @@ defmodule Exkml do
 
   defp str_to_line(line_str) do
     line_str
-    |> String.trim
-    |> String.split(" ")
-    |> extract_many(&str_to_point/1)
+    |> :binary.split([" ", "\n"], [:global])
+    |> Enum.map(&String.trim/1)
+    |> extract_many(&str_to_point/1, fn "" -> false; _ -> true end)
     |> case do
       {:ok, points} -> {:ok, %Line{points: points}}
       err -> err
     end
   end
 
-  def extract_many(things, fun) do
+  def extract_many(things, fun, test \\ fn _ -> true end) do
     things
     |> Enum.reduce_while([], fn thing, acc ->
-      case fun.(thing) do
-        {:ok, shape_like} -> {:cont, [shape_like | acc]}
-        {:error, _} = e -> {:halt, e}
+      if test.(thing) do
+        case fun.(thing) do
+          {:ok, shape_like} -> {:cont, [shape_like | acc]}
+          {:error, _} = e -> {:halt, e}
+        end
+      else
+        {:cont, acc}
       end
     end)
     |> case do
@@ -202,7 +207,8 @@ defmodule Exkml do
     Parse a stream of binaries, return a stream of placemarks
   """
   def placemarks!(doc) do
-    SweetXml.stream_tags(doc, [:Placemark, :placemark])
+    doc
+    |> SweetXml.stream_tags([:Placemark, :placemark])
     |> Stream.map(&to_placemark/1)
   end
 end

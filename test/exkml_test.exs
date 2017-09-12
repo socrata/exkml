@@ -200,4 +200,40 @@ defmodule ExkmlTest do
     end)
   end
 
+  test "malformed" do
+    Process.flag(:trap_exit, true)
+
+    assert "malformed_kml"
+    |> kml_fixture
+    |> Exkml.placemarks!()
+    |> Enum.into([])
+
+    assert_receive {:EXIT, _, {:fatal, _}}
+    Process.flag(:trap_exit, false)
+  end
+
+
+  Enum.each([
+    {"boundaries", [Multipolygon]},
+    {"cgis-en-6393", [Point]},
+    {"la_bikelanes", [Multiline, Line]},
+    {"noaa", [Point]},
+    {"terrassa", [Multipolygon, Point]},
+    {"usbr", [Multipolygon]},
+    {"wards", [Multipolygon, Polygon]}
+  ], fn {name, kinds} ->
+    test "smoke #{name}" do
+      expected_set = MapSet.new(unquote(kinds))
+
+      assert "smoke/#{unquote(name)}"
+      |> kml_fixture
+      |> Exkml.placemarks!()
+      |> Enum.each(fn {shapes, _attrs} ->
+        Enum.each(shapes, fn actual ->
+          assert actual.__struct__ in expected_set
+        end)
+      end)
+    end
+  end)
+
 end
