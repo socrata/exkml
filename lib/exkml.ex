@@ -199,6 +199,7 @@ defmodule Exkml do
 
 
   @doc """
+    Parse a stream of binaries, return a stream of placemarks
   """
   def placemarks!(doc) do
     SweetXml.stream_tags(doc, [:Placemark, :placemark])
