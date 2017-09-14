@@ -5,13 +5,13 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="generator" content="ExDoc v0.16.4">
-    <title>Exkml – exkml v0.1.2</title>
+    <title>Exkml – exkml v0.2.0</title>
     <link rel="stylesheet" href="dist/app-5b9e160cec.css" />
     
       <link rel="canonical" href="https://hexdocs.pm/exkml/Exkml.html" />
     
     
-    <script src="dist/sidebar_items-5b75bc77c5.js"></script>
+    <script src="dist/sidebar_items-26763f3b83.js"></script>
     
   </head>
   <body data-type="modules">
@@ -31,7 +31,7 @@
         exkml
       </h1>
       <h2 class="sidebar-projectVersion">
-        v0.1.2
+        v0.2.0
       </h2>
     </div>
     
@@ -52,6 +52,8 @@
     
 
     
+      <li><a id="exceptions-list" href="#full-list">Exceptions</a></li>
+    
 
     
 
@@ -67,7 +69,7 @@
 
 
       <h1>
-        <small class="visible-xs">exkml v0.1.2</small>
+        <small class="visible-xs">exkml v0.2.0</small>
         Exkml
         
       </h1>
@@ -97,23 +99,104 @@
     </h2>
     <div class="summary-row">
   <div class="summary-signature">
-    <a href="#extract_many/3">extract_many(things, fun, test \\ fn _ -&gt; true end)</a>
+    <a href="#emit/1">emit(state)</a>
   </div>
   
 </div>
 <div class="summary-row">
   <div class="summary-signature">
-    <a href="#maybe_put_charlist/3">maybe_put_charlist(map, name, value)</a>
+    <a href="#on_event/3">on_event(_, event, state)</a>
   </div>
   
 </div>
 <div class="summary-row">
   <div class="summary-signature">
-    <a href="#placemarks!/1">placemarks!(doc)</a>
+    <a href="#pluck_attribute/3">pluck_attribute(attributes, name, value)</a>
   </div>
   
-    <div class="summary-synopsis"><p>Parse a stream of binaries, return a stream of placemarks</p>
 </div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#pop_event/1">pop_event(state)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#pop_geom/1">pop_geom(state)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#pop_geom/2">pop_geom(state, kind)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#push_event/2">push_event(state, event)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#push_geom/2">push_geom(state, geom)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#put_attribute/3">put_attribute(s, name, value)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#put_error/2">put_error(state, reason)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#put_in_placemark/2">put_in_placemark(pm, geom)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#put_line/2">put_line(state, text)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#put_point/2">put_point(state, text)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#setup/3">setup(binstream, chunk_size, ref)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#stage/2">stage(binstream, chunk_size \\ 2048)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#str_to_point/1">str_to_point(point_str)</a>
+  </div>
+  
+</div>
+<div class="summary-row">
+  <div class="summary-signature">
+    <a href="#stream!/2">stream!(binstream, chunk_size \\ 2048)</a>
+  </div>
   
 </div>
 
@@ -136,17 +219,15 @@
             </a>
             Functions
           </h1>
-          <div class="detail" id="extract_many/3">
+          <div class="detail" id="emit/1">
   
-  
-    <span id="extract_many/2"></span>
   
   <div class="detail-header">
-    <a href="#extract_many/3" class="detail-link" title="Link to this function">
+    <a href="#emit/1" class="detail-link" title="Link to this function">
       <span class="icon-link" aria-hidden="true"></span>
       <span class="sr-only">Link to this function</span>
     </a>
-    <span class="signature">extract_many(things, fun, test \\ fn _ -&gt; true end)</span>
+    <span class="signature">emit(state)</span>
     
     
     
@@ -155,15 +236,15 @@
     
   </section>
 </div>
-<div class="detail" id="maybe_put_charlist/3">
+<div class="detail" id="on_event/3">
   
   
   <div class="detail-header">
-    <a href="#maybe_put_charlist/3" class="detail-link" title="Link to this function">
+    <a href="#on_event/3" class="detail-link" title="Link to this function">
       <span class="icon-link" aria-hidden="true"></span>
       <span class="sr-only">Link to this function</span>
     </a>
-    <span class="signature">maybe_put_charlist(map, name, value)</span>
+    <span class="signature">on_event(_, event, state)</span>
     
     
     
@@ -172,22 +253,263 @@
     
   </section>
 </div>
-<div class="detail" id="placemarks!/1">
+<div class="detail" id="pluck_attribute/3">
   
   
   <div class="detail-header">
-    <a href="#placemarks!/1" class="detail-link" title="Link to this function">
+    <a href="#pluck_attribute/3" class="detail-link" title="Link to this function">
       <span class="icon-link" aria-hidden="true"></span>
       <span class="sr-only">Link to this function</span>
     </a>
-    <span class="signature">placemarks!(doc)</span>
+    <span class="signature">pluck_attribute(attributes, name, value)</span>
     
     
     
   </div>
   <section class="docstring">
-    <p>  Parse a stream of binaries, return a stream of placemarks</p>
-
+    
+  </section>
+</div>
+<div class="detail" id="pop_event/1">
+  
+  
+  <div class="detail-header">
+    <a href="#pop_event/1" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">pop_event(state)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="pop_geom/1">
+  
+  
+  <div class="detail-header">
+    <a href="#pop_geom/1" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">pop_geom(state)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="pop_geom/2">
+  
+  
+  <div class="detail-header">
+    <a href="#pop_geom/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">pop_geom(state, kind)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="push_event/2">
+  
+  
+  <div class="detail-header">
+    <a href="#push_event/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">push_event(state, event)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="push_geom/2">
+  
+  
+  <div class="detail-header">
+    <a href="#push_geom/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">push_geom(state, geom)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="put_attribute/3">
+  
+  
+  <div class="detail-header">
+    <a href="#put_attribute/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">put_attribute(s, name, value)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="put_error/2">
+  
+  
+  <div class="detail-header">
+    <a href="#put_error/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">put_error(state, reason)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="put_in_placemark/2">
+  
+  
+  <div class="detail-header">
+    <a href="#put_in_placemark/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">put_in_placemark(pm, geom)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="put_line/2">
+  
+  
+  <div class="detail-header">
+    <a href="#put_line/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">put_line(state, text)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="put_point/2">
+  
+  
+  <div class="detail-header">
+    <a href="#put_point/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">put_point(state, text)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="setup/3">
+  
+  
+  <div class="detail-header">
+    <a href="#setup/3" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">setup(binstream, chunk_size, ref)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="stage/2">
+  
+  
+    <span id="stage/1"></span>
+  
+  <div class="detail-header">
+    <a href="#stage/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">stage(binstream, chunk_size \\ 2048)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="str_to_point/1">
+  
+  
+  <div class="detail-header">
+    <a href="#str_to_point/1" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">str_to_point(point_str)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
+  </section>
+</div>
+<div class="detail" id="stream!/2">
+  
+  
+    <span id="stream!/1"></span>
+  
+  <div class="detail-header">
+    <a href="#stream!/2" class="detail-link" title="Link to this function">
+      <span class="icon-link" aria-hidden="true"></span>
+      <span class="sr-only">Link to this function</span>
+    </a>
+    <span class="signature">stream!(binstream, chunk_size \\ 2048)</span>
+    
+    
+    
+  </div>
+  <section class="docstring">
+    
   </section>
 </div>
 

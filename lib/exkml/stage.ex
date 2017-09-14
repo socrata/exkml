@@ -1,4 +1,5 @@
 defmodule Exkml.Stage do
+  alias Experimental.GenStage
   use GenStage
 
   def start_link(binstream, chunk_size) do
@@ -52,6 +53,6 @@ defmodule Exkml.Stage do
   defp ack(_, nil), do: :ok
   defp ack(ref, from), do: send from, {:ack, ref}
 
-  defp maybe_end({:done, _, [], _, _}), do: GenStage.async_info(self(), :stop)
+  defp maybe_end({:done, _, [], _, _}), do: send self(), :stop
   defp maybe_end(_), do: :nope
 end

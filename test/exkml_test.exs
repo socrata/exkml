@@ -276,7 +276,7 @@ defmodule ExkmlTest do
     {"wards", [Polygon, Multigeometry], 53}
   ], fn {name, kinds, expected_length} ->
     test "smoke #{name}" do
-
+      alias Experimental.GenStage
       expected_set = MapSet.new(unquote(kinds))
 
       "smoke/#{unquote(name)}"
@@ -289,8 +289,7 @@ defmodule ExkmlTest do
       |> kml_fixture
       |> Exkml.stage()
 
-
-      GenStage.stream([{stage, max_demand: 2, cancel: :transient}])
+      GenStage.stream([{stage, max_demand: 2, cancel: :temporary}])
       |> compare_stream(unquote(expected_length), expected_set)
 
     end
