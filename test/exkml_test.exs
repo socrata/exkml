@@ -257,56 +257,77 @@ defmodule ExkmlTest do
     end)
   end
 
-  # test "malformed" do
-  #   Process.flag(:trap_exit, true)
-
-  #   assert "malformed_kml"
-  #   |> kml_fixture
-  #   |> Exkml.placemarks!()
-  #   |> Enum.into([])
-
-  #   assert_receive {:EXIT, _, {:fatal, _}}
-  #   Process.flag(:trap_exit, false)
-  # end
-
-
-  Enum.each([
-    {"boundaries", [Multigeometry]},
-    {"cgis-en-6393", [Point]},
-    {"la_bikelanes", [Multigeometry, Line]},
-    {"noaa", [Point]},
-    {"terrassa", [Multigeometry, Point]},
-    {"wards", [Polygon, Multigeometry]}
-  ], fn {name, kinds} ->
-    test "smoke #{name}" do
-      expected_set = MapSet.new(unquote(kinds))
-
-      out = "smoke/#{unquote(name)}"
+  test "malformed" do
+    assert_raise Exkml.KMLParseError, ~r"ended prematurely", fn ->
+      "malformed_kml"
       |> kml_fixture
       |> Exkml.stream!()
       |> Enum.into([])
+    end
+  end
 
-      assert length(out) > 0
 
-      out
-      |> Enum.each(fn %Placemark{geoms: shapes} ->
-        Enum.each(shapes, fn actual ->
-          assert actual.__struct__ in expected_set
-        end)
-      end)
+  Enum.each([
+    {"boundaries", [Multigeometry], 163},
+    {"cgis-en-6393", [Point], 233},
+    {"la_bikelanes", [Multigeometry, Line], 12844},
+    {"noaa", [Point], 227},
+    {"terrassa", [Multigeometry, Point], 73},
+    {"wards", [Polygon, Multigeometry], 53}
+  ], fn {name, kinds, expected_length} ->
+    test "smoke #{name}" do
+
+      expected_set = MapSet.new(unquote(kinds))
+
+      "smoke/#{unquote(name)}"
+      |> kml_fixture
+      |> Exkml.stream!()
+      |> compare_stream(unquote(expected_length), expected_set)
+
+
+      {:ok, stage} = "smoke/#{unquote(name)}"
+      |> kml_fixture
+      |> Exkml.stage()
+
+
+      GenStage.stream([{stage, max_demand: 2, cancel: :transient}])
+      |> compare_stream(unquote(expected_length), expected_set)
+
     end
   end)
 
-  # test "large" do
-  #   File.stream!("/home/chris/Downloads/large.kml", [], 2048)
-  #   |> Exkml.placemarks!
-  #   |> Enum.take(20_000)
+  def compare_stream(stream, expected_length, expected_set) do
+    out = Enum.into(stream, [])
+
+    assert length(out) == expected_length
+
+    actual_set = Enum.flat_map(out, fn %Placemark{geoms: shapes} ->
+      Enum.map(shapes, fn actual -> actual.__struct__ end)
+    end)
+    |> MapSet.new
+
+    assert actual_set == expected_set
+  end
+
+
+  # test "prof" do
+  #   proc = self()
+  #   spawn(fn ->
+  #     :fprof.trace([:start, {:procs, :all}])
+  #     :timer.sleep(5_000)
+  #     :fprof.trace([:stop])
+  #     :fprof.profile
+  #     :fprof.analyse({:dest, 'outfile.analysis'})
+  #     send proc, :done
+  #   end)
+
+  #   out = "smoke/usbr"
+  #   |> kml_fixture
+  #   |> Exkml.stream!()
+  #   |> Enum.take(1)
 
   #   receive do
-  #     any -> IO.inspect {:wat, any}
-  #   after
-  #     1000 -> IO.inspect :nope
+  #     :done -> :ok
   #   end
   # end
-
 end

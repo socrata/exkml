@@ -4,7 +4,7 @@ defmodule Exkml.Mixfile do
   def project do
     [
       app: :exkml,
-      version: "0.1.2",
+      version: "0.2.0",
       elixir: "~> 1.5",
       start_permanent: Mix.env == :prod,
       deps: deps(),
@@ -37,11 +37,8 @@ defmodule Exkml.Mixfile do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:sweet_xml, "~> 0.6.5"},
       {:ex_doc, ">= 0.0.0", only: :dev},
-      {:fast_xml, "~> 1.1"},
-      {:gen_stage, "~> 0.12.2"},
-      {:erlsom, "~> 1.4.1"}
+      {:gen_stage, "~> 0.12.2"}
     ]
   end
 end

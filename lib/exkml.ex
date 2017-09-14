@@ -20,6 +20,10 @@ defmodule Exkml do
     defstruct geometries: []
   end
 
+  defmodule KMLParseError do
+    defexception [:message, :event]
+  end
+
   defp do_str_to_point([x, y]) do
     with {x, _} <- Float.parse(x),
       {y, _} <- Float.parse(y) do
@@ -84,12 +88,14 @@ defmodule Exkml do
     defstruct [
       :receiver,
       :receiver_ref,
+      status: :out_kml,
       geom_stack: [],
       placemark: nil,
       stack: [],
       path: [],
       emit: [],
-      point_count: 0
+      point_count: 0,
+      batch_size: 64
     ]
   end
 
@@ -101,8 +107,8 @@ defmodule Exkml do
     %State{s | placemark: %Placemark{pm | attrs: Map.put(attrs, name, value)}}
   end
 
-  def put_error(state, reason) do
-    IO.inspect {:error, reason}
+  def put_error(state, _reason) do
+    # TODO: partial error handling?
     state
   end
 
@@ -147,7 +153,7 @@ defmodule Exkml do
     %State{state | geom_stack: [merge_up(child, parent, kind) | rest]}
   end
 
-  def pop_geom(state, kind) do
+  def pop_geom(_state, kind) do
     throw "Cannot pop #{kind}"
   end
 
@@ -178,7 +184,7 @@ defmodule Exkml do
   end
 
   defp merge_up(child, parent, _) do
-    throw "No merge_up impl #{inspect parent}"
+    throw "No merge_up impl #{inspect child} #{inspect parent}"
   end
 
   def put_point(%State{} = state, text) do
@@ -268,63 +274,85 @@ defmodule Exkml do
     %{emit(state) | stack: [], path: [], placemark: nil}
   end
 
-  def on_event(:endDocument, _, %State{receiver: r, receiver_ref: ref} = state) do
+  on_enter 'kml', _, state, do: %State{state | status: :kml}
+  on_exit  'kml', _, state, do: %State{state | status: :out_kml}
+
+  def on_event(:endDocument, _, %State{status: :out_kml, receiver: r, receiver_ref: ref} = state) do
     flush(state)
     send(r, {:done, ref})
+    state
+  end
+
+  def on_event(:endDocument, event, %State{status: :kml, receiver: r, receiver_ref: ref} = state) do
+    send(r, {:error, ref, self(), event})
     state
   end
 
   def on_event(_event, _, state), do: state
 
   defp flush(%State{receiver: r, receiver_ref: ref, emit: emit} = state) do
-    send(r, {:placemarks, ref, Enum.reverse(emit)})
+    send(r, {:placemarks, ref, self(), Enum.reverse(emit)})
+    receive do
+      {:ack, ^ref} -> :ok
+    end
     %State{state | emit: []}
   end
 
-
-  def emit(state) do
+  def emit(%State{batch_size: batch_size} = state) do
     case %State{state | emit: [state.placemark | state.emit]} do
-      %State{emit: emit} when length(emit) > 10 ->
-        flush(state)
+      %State{emit: emit} = new_state when length(emit) > batch_size -> flush(new_state)
       new_state -> new_state
     end
   end
 
+  def setup(binstream, chunk_size, ref) do
+    receiver = self()
+
+    spawn_link(fn ->
+      continuation = &Enumerable.reduce(binstream, &1, fn
+        x, {acc, counter} when counter <= 0 -> {:suspend, {[x | acc], 0}}
+        x, {acc, counter} -> {:cont, {[x | acc], counter - :erlang.byte_size(x)}}
+      end)
+
+      take = fn cont ->
+        case cont.({:cont, {[], chunk_size}}) do
+          {:suspended, {list, 0}, new_cont} ->
+            {:lists.reverse(list) |> Enum.join(), new_cont}
+          {status, {list, _}} ->
+            {:lists.reverse(list) |> Enum.join(), status}
+        end
+      end
+
+      :xmerl_sax_parser.stream("", [
+        continuation_fun: take,
+        continuation_state: continuation,
+        event_fun: &Exkml.on_event/3,
+        event_state: %State{receiver: receiver, receiver_ref: ref},
+        encoding: :utf8
+      ])
+    end)
+  end
+
+  def stage(binstream, chunk_size \\ 2048) do
+    Exkml.Stage.start_link(binstream, chunk_size)
+  end
 
 
   def stream!(binstream, chunk_size \\ 2048) do
-    continuation = &Enumerable.reduce(binstream, &1, fn
-      x, {acc, counter} when counter <= 0 -> {:suspend, {[x | acc], 0}}
-      x, {acc, counter} -> {:cont, {[x | acc], counter - :erlang.byte_size(x)}}
-    end)
-
-    take = fn cont ->
-      case cont.({:cont, {[], chunk_size}}) do
-        {:suspended, {list, 0}, new_cont} ->
-          {:lists.reverse(list) |> Enum.join(), new_cont}
-        {status, {list, _}} ->
-          {:lists.reverse(list) |> Enum.join(), status}
-      end
-    end
-
     ref = make_ref()
-
-    :xmerl_sax_parser.stream("", [
-      continuation_fun: take,
-      continuation_state: continuation,
-      event_fun: &Exkml.on_event/3,
-      event_state: %State{receiver: self(), receiver_ref: ref},
-      encoding: :utf8
-    ])
+    pid = setup(binstream, chunk_size, ref)
 
     Stream.resource(
       fn -> :ok end,
       fn state ->
         receive do
-          {:placemarks, ^ref, pms} ->
+          {:placemarks, ^ref, from, pms} ->
+            send from, {:ack, ref}
             {pms, state}
           {:done, ^ref} ->
             {:halt, state}
+          {:error, ^ref, ^pid, event} ->
+            raise KMLParseError, message: "Document ended prematurely", event: event
         end
       end,
       fn _ -> :ok end
