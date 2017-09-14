@@ -113,7 +113,7 @@ defmodule ExkmlTest do
     |> Enum.into([]) == [
       %Placemark{
         geoms: [
-          %Multigeometry{geometries: [
+          %Multigeometry{geoms: [
             %Point{x: 100.0, y: 0.0},
             %Point{x: 101.0, y: 1.0}
           ]}
@@ -122,7 +122,7 @@ defmodule ExkmlTest do
       },
       %Placemark{
         geoms: [
-          %Multigeometry{geometries: [
+          %Multigeometry{geoms: [
             %Point{x: 101.0, y: 0.0},
             %Point{x: 101.0, y: 1.0}
           ]}
@@ -139,7 +139,7 @@ defmodule ExkmlTest do
     |> Enum.into([]) == [
       %Placemark{
         geoms: [
-          %Multigeometry{geometries: [
+          %Multigeometry{geoms: [
             %Line{points: [
               %Point{x: 100.0, y: 0.0},
               %Point{x: 101.0, y: 1.0}]},
@@ -151,7 +151,7 @@ defmodule ExkmlTest do
       },
       %Placemark{
         geoms: [
-          %Multigeometry{geometries: [
+          %Multigeometry{geoms: [
             %Line{points: [
               %Point{x: 101.0, y: 0.0},
               %Point{x: 102.0, y: 1.0}]},
@@ -171,7 +171,7 @@ defmodule ExkmlTest do
     |> Exkml.stream!()
     |> Enum.into([]) == [
       %Placemark{
-        geoms: [%Multigeometry{geometries: [%Polygon{inner_boundaries: [],
+        geoms: [%Multigeometry{geoms: [%Polygon{inner_boundaries: [],
           outer_boundary: %Line{points: [%Point{x: 102.0, y: 2.0},
            %Point{x: 103.0, y: 2.0}, %Point{x: 103.0, y: 3.0},
            %Point{x: 102.0, y: 3.0}, %Point{x: 102.0, y: 2.0}]}},
@@ -185,7 +185,7 @@ defmodule ExkmlTest do
         attrs: %{"a_string" => "first value"}
       },
       %Placemark{
-        geoms: [%Multigeometry{geometries: [%Polygon{inner_boundaries: [],
+        geoms: [%Multigeometry{geoms: [%Polygon{inner_boundaries: [],
             outer_boundary: %Line{points: [%Point{x: 103.0, y: 2.0},
              %Point{x: 102.0, y: 2.0}, %Point{x: 103.0, y: 3.0},
              %Point{x: 102.0, y: 3.0}, %Point{x: 103.0, y: 2.0}]}},
@@ -234,7 +234,7 @@ defmodule ExkmlTest do
     |> Enum.into([]) == [
       %Placemark{
         geoms: [%Multigeometry{
-          geometries: [
+          geoms: [
             %Point{x: 102.0, y: 0.5},
             %Line{points: [
               %Point{x: 101.0, y: 0.0},

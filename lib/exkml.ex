@@ -17,7 +17,7 @@ defmodule Exkml do
   end
 
   defmodule Multigeometry do
-    defstruct geometries: []
+    defstruct geoms: []
   end
 
   defmodule KMLParseError do
@@ -168,7 +168,7 @@ defmodule Exkml do
   defp merge_up(%Line{} = geom, %Placemark{} = p), do: put_in_placemark(p, geom)
   defp merge_up(%Polygon{} = geom, %Placemark{} = p), do: put_in_placemark(p, geom)
   defp merge_up(%Multigeometry{} = mp, %Placemark{} = p) do
-    put_in_placemark(p, %Multigeometry{geometries: Enum.reverse(mp.geometries)})
+    put_in_placemark(p, %Multigeometry{geoms: Enum.reverse(mp.geoms)})
   end
 
   defp merge_up(%Line{} = line, %Polygon{} = poly, :outer_boundary) do
@@ -180,7 +180,7 @@ defmodule Exkml do
   end
 
   defp merge_up(single, %Multigeometry{} = mg, _) do
-    %Multigeometry{geometries: [single | mg.geometries]}
+    %Multigeometry{geoms: [single | mg.geoms]}
   end
 
   defp merge_up(child, parent, _) do
