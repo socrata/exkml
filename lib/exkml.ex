@@ -226,6 +226,10 @@ defmodule Exkml do
   textof "MultiGeometry/Polygon/outerBoundaryIs/LinearRing/coordinates", state, do: put_line(state, text)
   textof "MultiGeometry/Polygon/innerBoundaryIs/LinearRing/coordinates", state, do: put_line(state, text)
 
+  textof "name", state, do: put_attribute(state, "name", text)
+  textof "description", state, do: put_attribute(state, "description", text)
+
+
   on_exit 'Point', _, state,           do: state |> pop_geom |> pop_event
   on_exit 'LineString', _, state,      do: state |> pop_geom |> pop_event
   on_exit 'Polygon', _, state,         do: state |> pop_geom |> pop_event

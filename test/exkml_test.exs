@@ -9,6 +9,28 @@ defmodule ExkmlTest do
     Multigeometry
   }
 
+  test "names and descriptions" do
+    assert "names_and_descriptions"
+    |> kml_fixture
+    |> Exkml.stream!()
+    |> Enum.into([]) == [
+      %Placemark{
+        geoms: [%Point{x: 102.0, y: 0.5}],
+        attrs: %{
+          "name" => "foo",
+          "description" => "foofoo",
+        }
+      },
+      %Placemark{
+        geoms: [%Point{x: 103.0, y: 1.5}],
+        attrs: %{
+          "name" => "bar",
+          "description" => "barbar",
+        }
+      }
+    ]
+  end
+
   test "points" do
     assert "simple_points"
     |> kml_fixture
