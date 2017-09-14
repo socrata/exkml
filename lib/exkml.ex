@@ -1,8 +1,8 @@
 defmodule Exkml do
-  import SweetXml
   @moduledoc """
   Documentation for Exkml.
   """
+  import Exkml.Helpers
 
   defmodule Point do
     defstruct [:x, :y, :z]
@@ -16,16 +16,8 @@ defmodule Exkml do
     defstruct [:outer_boundary, inner_boundaries: []]
   end
 
-  defmodule Multipoint do
-    defstruct points: []
-  end
-
-  defmodule Multiline do
-    defstruct lines: []
-  end
-
-  defmodule Multipolygon do
-    defstruct polygons: []
+  defmodule Multigeometry do
+    defstruct geometries: []
   end
 
   defp do_str_to_point([x, y]) do
@@ -47,7 +39,7 @@ defmodule Exkml do
     end
   end
 
-  defp str_to_point(point_str) do
+  def str_to_point(point_str) do
     point_str
     |> String.trim
     |> String.split(",")
@@ -69,7 +61,7 @@ defmodule Exkml do
     end
   end
 
-  def extract_many(things, fun, test \\ fn _ -> true end) do
+  defp extract_many(things, fun, test) do
     things
     |> Enum.reduce_while([], fn thing, acc ->
       if test.(thing) do
@@ -87,128 +79,241 @@ defmodule Exkml do
     end
   end
 
-  defp add_geom(geoms, pm, fun) do
-    case fun.(pm) do
-      :none -> geoms
-      {:ok, geom} -> [geom | geoms]
-      {:error, _} = e -> e
-    end
+
+  defmodule State do
+    defstruct [
+      :receiver,
+      :receiver_ref,
+      geom_stack: [],
+      placemark: nil,
+      stack: [],
+      path: [],
+      emit: [],
+      point_count: 0
+    ]
   end
 
-  defp shape(nil, _, _), do: :none
-  defp shape(pm, xp, to_shape) do
-    case xpath(pm, xp) do
-      "" -> :none
-      [] -> :none
-      shape_str -> to_shape.(shape_str)
-    end
+  defmodule Placemark do
+    defstruct [attrs: %{}, geoms: []]
   end
 
-  defp extract_point(pm), do: shape(pm, ~x"//Point/coordinates/text()"s, &str_to_point/1)
-  defp extract_line(pm), do: shape(pm, ~x"//LineString/coordinates/text()"s, &str_to_line/1)
-
-  defp extract_linear_ring(pm), do: shape(pm, ~x"//LinearRing/coordinates/text()"s, &str_to_line/1)
-
-  defp extract_polygon(pm) do
-    with {:ok, outer_boundary} <- shape(pm, ~x"//Polygon/outerBoundaryIs/LinearRing/coordinates/text()"s, &str_to_line/1),
-      {:ok, inner_boundaries} <- extract_many(xpath(pm, ~x"//Polygon/innerBoundaryIs"el), &extract_linear_ring/1) do
-      {:ok, %Polygon{
-        outer_boundary: outer_boundary,
-        inner_boundaries: inner_boundaries
-      }}
-    end
+  def put_attribute(%State{placemark: %Placemark{attrs: attrs} = pm} = s, name, value) do
+    %State{s | placemark: %Placemark{pm | attrs: Map.put(attrs, name, value)}}
   end
 
-  defp point_from_placemark(pm), do: pm |> xpath(~x"//Placemark/Point"e) |> extract_point
-  defp line_from_placemark(pm), do: pm |> xpath(~x"//Placemark/LineString"e) |> extract_line
-  defp polygon_from_placemark(pm), do: pm |> xpath(~x"//Placemark/Polygon"e) |> extract_polygon
-
-  defp multipoint_from_placemark(pm) do
-    case xpath(pm, ~x"//Placemark/MultiGeometry/Point"l) do
-      [] -> :none
-      coords ->
-        with {:ok, points} <- extract_many(coords, &extract_point/1) do
-          {:ok, %Multipoint{points: points}}
-        end
-    end
+  def put_error(state, reason) do
+    IO.inspect {:error, reason}
+    state
   end
 
-  defp multiline_from_placemark(pm) do
-    case xpath(pm, ~x"//Placemark/MultiGeometry/LineString"l) do
-      [] -> :none
-      coords ->
-        with {:ok, lines} <- extract_many(coords, &extract_line/1) do
-          {:ok, %Multiline{lines: lines}}
-        end
-    end
-  end
-
-  defp multipolygon_from_placemark(pm) do
-    case xpath(pm, ~x"//Placemark/MultiGeometry/Polygon"l) do
-      [] -> :none
-      coords ->
-        with {:ok, polygons} <- extract_many(coords, &extract_polygon/1) do
-          {:ok, %Multipolygon{polygons: polygons}}
-        end
-    end
-  end
-
-  defp extract_geoms(pm) do
-    []
-    |> add_geom(pm, &point_from_placemark/1)
-    |> add_geom(pm, &line_from_placemark/1)
-    |> add_geom(pm, &polygon_from_placemark/1)
-    |> add_geom(pm, &multipoint_from_placemark/1)
-    |> add_geom(pm, &multiline_from_placemark/1)
-    |> add_geom(pm, &multipolygon_from_placemark/1)
-  end
-
-  defp simple_data_to_attrs(pm) do
-    pm
-    |> xpath(~x"//SimpleData"el)
-    |> Enum.map(fn attr ->
-      value = attr
-      |> xpath(~x"text()"s)
-      |> String.trim
-      {xpath(attr, ~x"@name"s), value}
+  def pluck_attribute(attributes, name, value) when is_list(name) and is_binary(value) do
+    Enum.find_value(attributes, fn
+      {_uri, _prefix, ^name, value} -> value
+      _ -> nil
     end)
-  end
+    |> case do
+      nil -> nil
+      chars ->
+        key = chars
+        |> :erlang.list_to_binary
+        |> String.trim
 
-  defp data_to_attrs(pm) do
-    pm
-    |> xpath(~x"//Data"el)
-    |> Enum.map(fn attr ->
-      value = attr
-      |> xpath(~x"//value/text()"s)
-      |> String.trim
+        value = value
+        |> String.trim
 
-      {xpath(attr, ~x"@name"s), value}
-    end)
-  end
-
-  def maybe_put_charlist(map, _, nil), do: map
-  def maybe_put_charlist(map, name, value), do: Map.put(map, name, :erlang.list_to_binary(value))
-
-
-  defp to_placemark({_, pm}) do
-    with geoms when is_list(geoms) <- extract_geoms(pm) do
-      attrs = (simple_data_to_attrs(pm) ++ data_to_attrs(pm))
-      |> Enum.into(%{})
-      |> maybe_put_charlist("name", xpath(pm, ~x"//Placemark/name/text()"))
-      |> maybe_put_charlist("description", xpath(pm, ~x"//Placemark/description/text()"))
-      |> maybe_put_charlist("snippet", xpath(pm, ~x"//Placemark/snippet/text()"))
-
-      {geoms, attrs}
+        {key, value}
     end
   end
 
 
-  @doc """
-    Parse a stream of binaries, return a stream of placemarks
-  """
-  def placemarks!(doc) do
-    doc
-    |> SweetXml.stream_tags([:Placemark, :placemark])
-    |> Stream.map(&to_placemark/1)
+  def push_event(%State{stack: stack, path: path} = state, event) do
+    {_, _, name, _, attributes} = event
+    %State{state | stack: [name | stack], path: [{name, attributes} | path]}
   end
+
+  def pop_event(%State{stack: [_ | stack], path: [_ | path]} = state) do
+    %State{state | stack: stack, path: path}
+  end
+
+  def push_geom(%State{geom_stack: gs} = state, geom) do
+    %State{state | geom_stack: [geom | gs]}
+  end
+
+  def pop_geom(%State{geom_stack: [geom | []]} = state, _) do
+    %State{state | geom_stack: [], placemark: merge_up(geom, state.placemark)}
+  end
+
+  def pop_geom(%State{geom_stack: [child, parent | rest]} = state, kind) do
+    %State{state | geom_stack: [merge_up(child, parent, kind) | rest]}
+  end
+
+  def pop_geom(state, kind) do
+    throw "Cannot pop #{inspect state} #{kind}"
+  end
+
+  def pop_geom(state), do: pop_geom(state, nil)
+
+
+  def put_in_placemark(%Placemark{geoms: geoms} = pm, geom) do
+    %Placemark{pm | geoms: [geom | geoms]}
+  end
+
+  defp merge_up(%Point{} = geom, %Placemark{} = p), do: put_in_placemark(p, geom)
+  defp merge_up(%Line{} = geom, %Placemark{} = p), do: put_in_placemark(p, geom)
+  defp merge_up(%Polygon{} = geom, %Placemark{} = p), do: put_in_placemark(p, geom)
+  defp merge_up(%Multigeometry{} = mp, %Placemark{} = p) do
+    put_in_placemark(p, %Multigeometry{geometries: Enum.reverse(mp.geometries)})
+  end
+
+  defp merge_up(%Line{} = line, %Polygon{} = poly, :outer_boundary) do
+    %Polygon{poly | outer_boundary: line}
+  end
+
+  defp merge_up(%Line{} = line, %Polygon{} = poly, :inner_boundaries) do
+    %Polygon{poly | inner_boundaries: [line | poly.inner_boundaries]}
+  end
+
+  defp merge_up(single, %Multigeometry{} = mg, _) do
+    %Multigeometry{geometries: [single | mg.geometries]}
+  end
+
+  defp merge_up(child, parent, _) do
+    throw "No merge_up impl #{inspect child} #{inspect parent}"
+  end
+
+  def put_point(%State{} = state, text) do
+    case str_to_point(text) do
+      {:ok, point} -> push_geom(state, point)
+      {:error, reason} -> put_error(state, reason)
+    end
+  end
+
+  def put_line(%State{} = state, text) do
+    case str_to_line(text) do
+      {:ok, line} -> push_geom(state, line)
+      {:error, reason} -> put_error(state, reason)
+    end
+  end
+
+  textof "ExtendedData/SchemaData/SimpleData", state do
+    %State{path: [{_, attributes} | _]} = state
+    {name, value} = pluck_attribute(attributes, 'name', text)
+
+    put_attribute(state, name, value)
+  end
+
+  textof "ExtendedData/Data/value", state do
+    %State{path: [_, {_, attributes} | _]} = state
+    {name, value} = pluck_attribute(attributes, 'name', text)
+
+    put_attribute(state, name, value)
+  end
+
+  textof "Point/coordinates", state, do: put_point(state, text)
+  textof "MultiGeometry/Point/coordinates", state, do: put_point(state, text)
+
+  textof "LineString/coordinates", state, do: put_line(state, text)
+  textof "MultiGeometry/LineString/coordinates", state, do: put_line(state, text)
+
+  textof "Polygon/outerBoundaryIs/LinearRing/coordinates", state, do: put_line(state, text)
+  textof "Polygon/innerBoundaryIs/LinearRing/coordinates", state, do: put_line(state, text)
+  textof "MultiGeometry/Polygon/outerBoundaryIs/LinearRing/coordinates", state, do: put_line(state, text)
+  textof "MultiGeometry/Polygon/innerBoundaryIs/LinearRing/coordinates", state, do: put_line(state, text)
+
+  on_exit 'Point', _, state,           do: state |> pop_geom |> pop_event
+  on_exit 'LineString', _, state,      do: state |> pop_geom |> pop_event
+  on_exit 'Polygon', _, state,         do: state |> pop_geom |> pop_event
+  on_exit 'innerBoundaryIs', _, state, do: state |> pop_geom(:inner_boundaries) |> pop_event
+  on_exit 'outerBoundaryIs', _, state, do: state |> pop_geom(:outer_boundary) |> pop_event
+  on_exit 'MultiGeometry', _, state,   do: state |> pop_geom |> pop_event
+
+  on_enter 'Polygon', event, %State{placemark: %Placemark{}} = state do
+    state
+    |> push_geom(%Polygon{})
+    |> push_event(event)
+  end
+
+  on_enter 'MultiGeometry', event, state do
+    state
+    |> push_geom(%Multigeometry{})
+    |> push_event(event)
+  end
+
+  # Push the element name onto the stack, as well as the attributes onto the path
+  on_enter _name, event, %State{placemark: %Placemark{}} = state do
+    push_event(state, event)
+  end
+
+  # Pop the element name off the stack, and pop the attributes as well
+  on_exit name, _, %{placemark: %Placemark{}, stack: [name | stack], path: [_ | path]} = state do
+    %State{state | stack: stack, path: path}
+  end
+
+  on_enter 'Placemark', _, %{placemark: nil} = state do
+    %State{state | stack: [], path: [], placemark: %Placemark{}}
+  end
+
+  on_exit 'Placemark', _, %{placemark: %Placemark{}} = state do
+    %{emit(state) | stack: [], path: [], placemark: nil}
+  end
+
+  def on_event(:endDocument, _, %State{receiver: r, receiver_ref: ref} = state) do
+    flush(state)
+    send(r, {:done, ref})
+    state
+  end
+
+  def on_event(_event, _, state), do: state
+
+  defp flush(%State{receiver: r, receiver_ref: ref, emit: emit} = state) do
+    send(r, {:placemarks, ref, Enum.reverse(emit)})
+    %State{state | emit: []}
+  end
+
+  def emit(state) do
+
+    flush(%State{state | emit: [state.placemark | state.emit]})
+  end
+
+
+
+  def stream!(binstream, chunk_size \\ 64) do
+    continuation = &Enumerable.reduce(binstream, &1, fn
+      x, {acc, counter} when counter <= 0 -> {:suspend, {[x | acc], 0}}
+      x, {acc, counter} -> {:cont, {[x | acc], counter - :erlang.byte_size(x)}}
+    end)
+
+    take = fn cont ->
+      case cont.({:cont, {[], chunk_size}}) do
+        {:suspended, {list, 0}, new_cont} ->
+          {:lists.reverse(list) |> Enum.join(), new_cont}
+        {status, {list, _}} ->
+          {:lists.reverse(list) |> Enum.join(), status}
+      end
+    end
+
+    ref = make_ref()
+
+    :xmerl_sax_parser.stream("", [
+      continuation_fun: take,
+      continuation_state: continuation,
+      event_fun: &Exkml.on_event/3,
+      event_state: %State{receiver: self(), receiver_ref: ref},
+      encoding: :utf8
+    ])
+
+    Stream.resource(
+      fn -> :ok end,
+      fn state ->
+        receive do
+          {:placemarks, ^ref, pms} ->
+            {pms, state}
+          {:done, ^ref} ->
+            {:halt, state}
+        end
+      end,
+      fn _ -> :ok end
+    )
+  end
+
 end
