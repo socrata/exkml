@@ -223,9 +223,19 @@ defmodule Exkml do
   on_exit 'Point', _, state,           do: state |> pop_geom |> pop_event
   on_exit 'LineString', _, state,      do: state |> pop_geom |> pop_event
   on_exit 'Polygon', _, state,         do: state |> pop_geom |> pop_event
-  on_exit 'innerBoundaryIs', _, state, do: state |> pop_geom(:inner_boundaries) |> pop_event
-  on_exit 'outerBoundaryIs', _, state, do: state |> pop_geom(:outer_boundary) |> pop_event
-  on_exit 'MultiGeometry', _, state,   do: state |> pop_geom |> pop_event
+
+  on_exit 'LinearRing', _, state do
+    boundary_type = case state.path do
+      [_, {'innerBoundaryIs', _} | _] -> :inner_boundaries
+      [_, {'outerBoundaryIs', _} | _] -> :outer_boundary
+    end
+
+    state
+    |> pop_geom(boundary_type)
+    |> pop_event
+  end
+
+  on_exit 'MultiGeometry', _, state, do: state |> pop_geom |> pop_event
 
   on_enter 'Polygon', event, %State{placemark: %Placemark{}} = state do
     state
@@ -238,6 +248,7 @@ defmodule Exkml do
     |> push_geom(%Multigeometry{})
     |> push_event(event)
   end
+
 
   # Push the element name onto the stack, as well as the attributes onto the path
   on_enter _name, event, %State{placemark: %Placemark{}} = state do
