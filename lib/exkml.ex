@@ -148,7 +148,7 @@ defmodule Exkml do
   end
 
   def pop_geom(state, kind) do
-    throw "Cannot pop #{inspect state} #{kind}"
+    throw "Cannot pop #{kind}"
   end
 
   def pop_geom(state), do: pop_geom(state, nil)
@@ -178,7 +178,7 @@ defmodule Exkml do
   end
 
   defp merge_up(child, parent, _) do
-    throw "No merge_up impl #{inspect child} #{inspect parent}"
+    throw "No merge_up impl #{inspect parent}"
   end
 
   def put_point(%State{} = state, text) do
@@ -270,14 +270,18 @@ defmodule Exkml do
     %State{state | emit: []}
   end
 
-  def emit(state) do
 
-    flush(%State{state | emit: [state.placemark | state.emit]})
+  def emit(state) do
+    case %State{state | emit: [state.placemark | state.emit]} do
+      %State{emit: emit} when length(emit) > 10 ->
+        flush(state)
+      new_state -> new_state
+    end
   end
 
 
 
-  def stream!(binstream, chunk_size \\ 64) do
+  def stream!(binstream, chunk_size \\ 2048) do
     continuation = &Enumerable.reduce(binstream, &1, fn
       x, {acc, counter} when counter <= 0 -> {:suspend, {[x | acc], 0}}
       x, {acc, counter} -> {:cont, {[x | acc], counter - :erlang.byte_size(x)}}
