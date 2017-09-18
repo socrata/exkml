@@ -229,6 +229,9 @@ defmodule Exkml do
   textof "name", state, do: put_attribute(state, "name", text)
   textof "description", state, do: put_attribute(state, "description", text)
 
+  textof "TimeSpan/begin", state, do: put_attribute(state, "timespan_begin", text)
+  textof "TimeSpan/end", state, do: put_attribute(state, "timespan_end", text)
+
 
   on_exit 'Point', _, state,           do: state |> pop_geom |> pop_event
   on_exit 'LineString', _, state,      do: state |> pop_geom |> pop_event
@@ -246,6 +249,7 @@ defmodule Exkml do
   end
 
   on_exit 'MultiGeometry', _, state, do: state |> pop_geom |> pop_event
+
 
   on_enter 'Polygon', event, %State{placemark: %Placemark{}} = state do
     state

@@ -31,6 +31,22 @@ defmodule ExkmlTest do
     ]
   end
 
+  test "timespan" do
+    "rainier"
+    |> kml_fixture
+    |> Exkml.stream!()
+    |> Enum.filter(fn
+      %{geoms: [%Exkml.Point{}]} -> true
+      _ -> false
+    end)
+    |> Enum.map(fn %{attrs: attrs} -> attrs end)
+    |> Enum.each(fn %{"timespan_begin" => tsb, "timespan_end" => tse} ->
+      assert tsb
+      assert tse
+    end)
+  end
+
+
   test "points" do
     assert "simple_points"
     |> kml_fixture
