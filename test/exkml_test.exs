@@ -46,6 +46,15 @@ defmodule ExkmlTest do
     end)
   end
 
+  def receive_placemarks(ref) do
+    receive do
+      {:placemarks, ^ref, from, placemarks} ->
+        Exkml.ack(from, ref)
+        placemarks ++ receive_placemarks(ref)
+      {:done, ^ref} ->
+        []
+    end
+  end
 
   test "points" do
     assert "simple_points"

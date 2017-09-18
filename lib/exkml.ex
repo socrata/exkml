@@ -86,6 +86,7 @@ defmodule Exkml do
 
   defmodule State do
     defstruct [
+      :closer,
       :receiver,
       :receiver_ref,
       status: :out_kml,
@@ -285,10 +286,11 @@ defmodule Exkml do
   on_enter 'kml', _, state, do: %State{state | status: :kml}
   on_exit  'kml', _, state, do: %State{state | status: :out_kml}
 
-  def on_event(:endDocument, _, %State{status: :out_kml, receiver: r, receiver_ref: ref} = state) do
-    flush(state)
+  def on_event(:endDocument, _event, %State{status: :out_kml, receiver: r, receiver_ref: ref} = state) do
+    new_state = flush(state)
     send(r, {:done, ref})
-    state
+    send(state.closer, {:close, ref})
+    new_state
   end
 
   def on_event(:endDocument, event, %State{status: :kml, receiver: r, receiver_ref: ref} = state) do
@@ -300,16 +302,37 @@ defmodule Exkml do
 
   defp flush(%State{receiver: r, receiver_ref: ref, emit: emit} = state) do
     send(r, {:placemarks, ref, self(), Enum.reverse(emit)})
+    %State{state | emit: []}
+  end
+
+  defp await_ack(%State{receiver_ref: ref} = state) do
     receive do
       {:ack, ^ref} -> :ok
     end
-    %State{state | emit: []}
+    state
   end
 
   def emit(%State{batch_size: batch_size} = state) do
     case %State{state | emit: [state.placemark | state.emit]} do
-      %State{emit: emit} = new_state when length(emit) > batch_size -> flush(new_state)
-      new_state -> new_state
+      %State{emit: emit} = new_state when length(emit) > batch_size ->
+        new_state |> flush |> await_ack
+      new_state ->
+        new_state
+    end
+  end
+
+  # This is because the xmerl sax parser doesn't expose a option
+  # for a function that gets called when the endDocument
+  # event is emitter. WHY? ffs.
+  def closer(ref, state) do
+    receive do
+      {:state, ^ref, new_state} ->
+        closer(ref, new_state)
+      {:close, ^ref} ->
+        case state do
+          nil -> :ok
+          _ -> state.({:halt, {[], 0}})
+        end
     end
   end
 
@@ -317,38 +340,45 @@ defmodule Exkml do
     receiver = self()
 
     spawn_link(fn ->
-      continuation = &Enumerable.reduce(binstream, &1, fn
-        x, {acc, counter} when counter <= 0 -> {:suspend, {[x | acc], 0}}
-        x, {acc, counter} -> {:cont, {[x | acc], counter - :erlang.byte_size(x)}}
+      closer_pid = spawn_link(fn -> closer(ref, nil) end)
+      # binstream = Stream.concat(binstream, [:end])
+      initial_state = &Enumerable.reduce(binstream, &1, fn
+        x, {acc, counter} when counter <= 0 ->
+          {:suspend, {[x | acc], 0}}
+        x, {acc, counter} ->
+          {:cont, {[x | acc], counter - :erlang.byte_size(x)}}
       end)
 
-      take = fn cont ->
-        case cont.({:cont, {[], chunk_size}}) do
-          {:suspended, {list, 0}, new_cont} ->
-            {:lists.reverse(list) |> Enum.join(), new_cont}
+      take = fn state ->
+        case state.({:cont, {[], chunk_size}}) do
+          {:suspended, {list, 0}, new_state} ->
+            send closer_pid, {:state, ref, new_state}
+            {list |> Enum.reverse |> Enum.join(), new_state}
           {status, {list, _}} ->
-            {:lists.reverse(list) |> Enum.join(), status}
+            {list |> Enum.reverse |> Enum.join(), status}
         end
       end
 
+
+
       :xmerl_sax_parser.stream("", [
         continuation_fun: take,
-        continuation_state: continuation,
+        continuation_state: initial_state,
         event_fun: &Exkml.on_event/3,
-        event_state: %State{receiver: receiver, receiver_ref: ref},
+        event_state: %State{receiver: receiver, receiver_ref: ref, closer: closer_pid},
         encoding: :utf8
       ])
     end)
   end
 
-  def stage(binstream, chunk_size \\ 2048) do
+  def stage(binstream, chunk_size \\ 4096) do
     Exkml.Stage.start_link(binstream, chunk_size)
   end
 
   @doc """
   Get a stream of placemarks
   """
-  def stream!(binstream, chunk_size \\ 2048) do
+  def stream!(binstream, chunk_size \\ 4096) do
     ref = make_ref()
     pid = setup(binstream, chunk_size, ref)
 
@@ -395,7 +425,7 @@ defmodule Exkml do
     An error with event being the last SAX event
 
   """
-  def events!(binstream, chunk_size \\ 2048) do
+  def events!(binstream, chunk_size \\ 4096) do
     ref = make_ref()
     _pid = setup(binstream, chunk_size, ref)
 
