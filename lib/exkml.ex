@@ -341,7 +341,9 @@ defmodule Exkml do
     Exkml.Stage.start_link(binstream, chunk_size)
   end
 
-
+  @doc """
+  Get a stream of placemarks
+  """
   def stream!(binstream, chunk_size \\ 2048) do
     ref = make_ref()
     pid = setup(binstream, chunk_size, ref)
@@ -361,6 +363,43 @@ defmodule Exkml do
       end,
       fn _ -> :ok end
     )
+  end
+
+  @doc """
+  Get events sent directly to the calling process
+
+  Returns a unique reference you can use to match on,
+  ref = events!(kml_byte_stream)
+
+  Event will be one of
+  `{:placemarks, ^ref, from, placemarks}`
+    Where placemarks are a list of marks
+
+    When you have done what you need to do, send an acknowledgement.
+    The ack contains the ref `ref`, and is a message
+    back to the `from` process to make it start parsing the next
+    batch
+
+    Like this
+    ```
+    Exkml.ack(from, ref)
+    ```
+
+  `{:done, ^ref}`
+    When parsing is done
+  `{:error, ^ref, ^pid, event}`
+    An error with event being the last SAX event
+
+  """
+  def events!(binstream, chunk_size \\ 2048) do
+    ref = make_ref()
+    _pid = setup(binstream, chunk_size, ref)
+
+    ref
+  end
+
+  def ack(from, ref) do
+    send from, {:ack, ref}
   end
 
 end
