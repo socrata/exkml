@@ -4,8 +4,8 @@ defmodule Exkml.Mixfile do
   def project do
     [
       app: :exkml,
-      version: "0.2.6",
-      elixir: "~> 1.5",
+      version: "0.3.0",
+      elixir: "~> 1.7",
       start_permanent: Mix.env == :prod,
       deps: deps(),
       description: description(),
@@ -38,7 +38,8 @@ defmodule Exkml.Mixfile do
   defp deps do
     [
       {:ex_doc, ">= 0.0.0", only: :dev},
-      {:gen_stage, "~> 0.8.0"}
+      {:gen_stage, "~> 0.8.0"},
+      {:saxy, "~> 0.7.0"}
     ]
   end
 end

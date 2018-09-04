@@ -1,16 +1,16 @@
 defmodule Exkml.Helpers do
   defmacro on_enter(name, event, state, body) do
     quote do
-      def on_event({:startElement, _, unquote(name), _, _} = unquote(event), _, unquote(state)) do
-        unquote(body[:do])
+      def handle_event(:start_element, {unquote(name), _attrs} = unquote(event), unquote(state)) do
+        {:ok, unquote(body[:do])}
       end
     end
   end
 
-  defmacro on_exit(name, event, state, body) do
+  defmacro on_exit(name, state, body) do
     quote do
-      def on_event({:endElement, _, unquote(name), _} = unquote(event), _, unquote(state)) do
-        unquote(body[:do])
+      def handle_event(:end_element, unquote(name), unquote(state)) do
+        {:ok, unquote(body[:do])}
       end
     end
   end
@@ -19,12 +19,11 @@ defmodule Exkml.Helpers do
     stack = path
     |> String.split("/")
     |> Enum.reverse
-    |> Enum.map(&:erlang.binary_to_list/1)
 
     quote do
-      def on_event({:characters, c}, _, %{stack: unquote(stack)} = unquote(state)) do
-        var!(text) = :erlang.list_to_binary(c)
-        unquote(body[:do])
+      def handle_event(:characters, c, %{stack: unquote(stack)} = unquote(state)) do
+        var!(text) = c
+        {:ok, unquote(body[:do])}
       end
     end
   end
