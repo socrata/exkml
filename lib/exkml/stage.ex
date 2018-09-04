@@ -7,8 +7,7 @@ defmodule Exkml.Stage do
   end
 
   def init([binstream, chunk_size]) do
-    ref = make_ref()
-    Exkml.setup(binstream, chunk_size, ref)
+    ref = Exkml.events!(binstream)
     buf = []
     demand = 0
     {:producer, {:started, ref, buf, demand, nil}}
@@ -21,7 +20,7 @@ defmodule Exkml.Stage do
 
     new_state = {status, ref, keep, less_demand, from}
 
-    ack(ref, from)
+    Exkml.ack(from, ref)
 
     maybe_end(new_state)
 
@@ -35,7 +34,7 @@ defmodule Exkml.Stage do
   def handle_info({:placemarks, ref, from, pms}, {status, ref, buf, demand, _}) do
     {emit, keep} = Enum.split(buf ++ pms, demand)
     new_demand = demand - length(emit)
-    ack(ref, from)
+    Exkml.ack(from, ref)
 
     {:noreply, emit, {status, ref, keep, new_demand, from}}
   end
@@ -49,9 +48,6 @@ defmodule Exkml.Stage do
   def handle_info(:stop, state) do
     {:stop, :normal, state}
   end
-
-  defp ack(_, nil), do: :ok
-  defp ack(ref, from), do: send from, {:ack, ref}
 
   defp maybe_end({:done, _, [], _, _}), do: send self(), :stop
   defp maybe_end(_), do: :nope

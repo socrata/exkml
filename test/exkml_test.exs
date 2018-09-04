@@ -304,6 +304,7 @@ defmodule ExkmlTest do
     end)
   end
 
+  @tag timeout: 1000
   test "malformed" do
     assert_raise Exkml.KMLParseError, ~r"ended prematurely", fn ->
       "malformed_kml"

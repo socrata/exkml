@@ -86,7 +86,6 @@ defmodule Exkml do
 
   defmodule State do
     defstruct [
-      :closer,
       :receiver,
       :receiver_ref,
       status: :out_kml,
@@ -113,28 +112,23 @@ defmodule Exkml do
     state
   end
 
-  def pluck_attribute(attributes, name, value) when is_list(name) and is_binary(value) do
+  def pluck_attribute(attributes, name, value) do
     Enum.find_value(attributes, fn
-      {_uri, _prefix, ^name, value} -> value
+      {^name, value} -> value
       _ -> nil
     end)
     |> case do
       nil -> nil
       chars ->
-        key = chars
-        |> :erlang.list_to_binary
-        |> String.trim
-
-        value = value
-        |> String.trim
+        key   = String.trim(chars)
+        value = String.trim(value)
 
         {key, value}
     end
   end
 
 
-  def push_event(%State{stack: stack, path: path} = state, event) do
-    {_, _, name, _, attributes} = event
+  def push_event(%State{stack: stack, path: path} = state, {name, attributes}) do
     %State{state | stack: [name | stack], path: [{name, attributes} | path]}
   end
 
@@ -204,14 +198,14 @@ defmodule Exkml do
 
   textof "ExtendedData/SchemaData/SimpleData", state do
     %State{path: [{_, attributes} | _]} = state
-    {name, value} = pluck_attribute(attributes, 'name', text)
+    {name, value} = pluck_attribute(attributes, "name", text)
 
     put_attribute(state, name, value)
   end
 
   textof "ExtendedData/Data/value", state do
     %State{path: [_, {_, attributes} | _]} = state
-    {name, value} = pluck_attribute(attributes, 'name', text)
+    {name, value} = pluck_attribute(attributes, "name", text)
 
     put_attribute(state, name, value)
   end
@@ -234,14 +228,14 @@ defmodule Exkml do
   textof "TimeSpan/end", state, do: put_attribute(state, "timespan_end", text)
 
 
-  on_exit 'Point', _, state,           do: state |> pop_geom |> pop_event
-  on_exit 'LineString', _, state,      do: state |> pop_geom |> pop_event
-  on_exit 'Polygon', _, state,         do: state |> pop_geom |> pop_event
+  on_exit "Point", state,      do: state |> pop_geom |> pop_event
+  on_exit "LineString", state, do: state |> pop_geom |> pop_event
+  on_exit "Polygon", state,    do: state |> pop_geom |> pop_event
 
-  on_exit 'LinearRing', _, state do
+  on_exit "LinearRing", state do
     boundary_type = case state.path do
-      [_, {'innerBoundaryIs', _} | _] -> :inner_boundaries
-      [_, {'outerBoundaryIs', _} | _] -> :outer_boundary
+      [_, {"innerBoundaryIs", _} | _] -> :inner_boundaries
+      [_, {"outerBoundaryIs", _} | _] -> :outer_boundary
     end
 
     state
@@ -249,16 +243,16 @@ defmodule Exkml do
     |> pop_event
   end
 
-  on_exit 'MultiGeometry', _, state, do: state |> pop_geom |> pop_event
+  on_exit "MultiGeometry", state, do: state |> pop_geom |> pop_event
 
 
-  on_enter 'Polygon', event, %State{placemark: %Placemark{}} = state do
+  on_enter "Polygon", event, %State{placemark: %Placemark{}} = state do
     state
     |> push_geom(%Polygon{})
     |> push_event(event)
   end
 
-  on_enter 'MultiGeometry', event, state do
+  on_enter "MultiGeometry", event, state do
     state
     |> push_geom(%Multigeometry{})
     |> push_event(event)
@@ -271,34 +265,34 @@ defmodule Exkml do
   end
 
   # Pop the element name off the stack, and pop the attributes as well
-  on_exit name, _, %{placemark: %Placemark{}, stack: [name | stack], path: [_ | path]} = state do
+  on_exit name, %{placemark: %Placemark{}, stack: [name | stack], path: [_ | path]} = state do
     %State{state | stack: stack, path: path}
   end
 
-  on_enter 'Placemark', _, %{placemark: nil} = state do
+  on_enter "Placemark", _, %{placemark: nil} = state do
     %State{state | stack: [], path: [], placemark: %Placemark{}}
   end
 
-  on_exit 'Placemark', _, %{placemark: %Placemark{}} = state do
+  on_exit "Placemark", %{placemark: %Placemark{}} = state do
     %{emit(state) | stack: [], path: [], placemark: nil}
   end
 
-  on_enter 'kml', _, state, do: %State{state | status: :kml}
-  on_exit  'kml', _, state, do: %State{state | status: :out_kml}
+  on_enter "kml", _, state, do: %State{state | status: :kml}
+  on_exit  "kml", state, do: %State{state | status: :out_kml}
 
-  def on_event(:endDocument, _event, %State{status: :out_kml, receiver: r, receiver_ref: ref} = state) do
+  def handle_event(:end_document, _event, %State{status: :out_kml, receiver: r, receiver_ref: ref} = state) do
     new_state = flush(state)
     send(r, {:done, ref})
-    send(state.closer, {:close, ref})
-    new_state
+    {:ok, new_state}
   end
 
-  def on_event(:endDocument, event, %State{status: :kml, receiver: r, receiver_ref: ref} = state) do
-    send(r, {:error, ref, self(), event})
-    state
+  def handle_event(:end_document, event, %State{status: :kml}) do
+    {:stop, {:error, event}}
   end
 
-  def on_event(_event, _, state), do: state
+  def handle_event(_event, _args, state) do
+    {:ok, state}
+  end
 
   defp flush(%State{receiver: r, receiver_ref: ref, emit: emit} = state) do
     send(r, {:placemarks, ref, self(), Enum.reverse(emit)})
@@ -321,55 +315,7 @@ defmodule Exkml do
     end
   end
 
-  # This is because the xmerl sax parser doesn't expose a option
-  # for a function that gets called when the endDocument
-  # event is emitter. WHY? ffs.
-  def closer(ref, state) do
-    receive do
-      {:state, ^ref, new_state} ->
-        closer(ref, new_state)
-      {:close, ^ref} ->
-        case state do
-          nil -> :ok
-          _ -> state.({:halt, {[], 0}})
-        end
-    end
-  end
 
-  def setup(binstream, chunk_size, ref) do
-    receiver = self()
-
-    spawn_link(fn ->
-      closer_pid = spawn_link(fn -> closer(ref, nil) end)
-      # binstream = Stream.concat(binstream, [:end])
-      initial_state = &Enumerable.reduce(binstream, &1, fn
-        x, {acc, counter} when counter <= 0 ->
-          {:suspend, {[x | acc], 0}}
-        x, {acc, counter} ->
-          {:cont, {[x | acc], counter - :erlang.byte_size(x)}}
-      end)
-
-      take = fn state ->
-        case state.({:cont, {[], chunk_size}}) do
-          {:suspended, {list, 0}, new_state} ->
-            send closer_pid, {:state, ref, new_state}
-            {list |> Enum.reverse |> Enum.join(), new_state}
-          {status, {list, _}} ->
-            {list |> Enum.reverse |> Enum.join(), status}
-        end
-      end
-
-
-
-      :xmerl_sax_parser.stream("", [
-        continuation_fun: take,
-        continuation_state: initial_state,
-        event_fun: &Exkml.on_event/3,
-        event_state: %State{receiver: receiver, receiver_ref: ref, closer: closer_pid},
-        encoding: :utf8
-      ])
-    end)
-  end
 
   def stage(binstream, chunk_size \\ 4096) do
     Exkml.Stage.start_link(binstream, chunk_size)
@@ -378,20 +324,19 @@ defmodule Exkml do
   @doc """
   Get a stream of placemarks
   """
-  def stream!(binstream, chunk_size \\ 4096) do
-    ref = make_ref()
-    pid = setup(binstream, chunk_size, ref)
+  def stream!(binstream, _chunk_size \\ 4096) do
+    ref = events!(binstream)
 
     Stream.resource(
       fn -> :ok end,
       fn state ->
         receive do
           {:placemarks, ^ref, from, pms} ->
-            send from, {:ack, ref}
+            ack(from, ref)
             {pms, state}
           {:done, ^ref} ->
             {:halt, state}
-          {:error, ^ref, ^pid, event} ->
+          {:error, ^ref, event} ->
             raise KMLParseError, message: "Document ended prematurely", event: event
         end
       end,
@@ -425,15 +370,25 @@ defmodule Exkml do
     An error with event being the last SAX event
 
   """
-  def events!(binstream, chunk_size \\ 4096) do
+  def events!(binstream, _chunk_size \\ 4096) do
+    me = self()
     ref = make_ref()
-    _pid = setup(binstream, chunk_size, ref)
+    spawn_link(fn ->
+      Saxy.parse_stream(binstream, __MODULE__, %State{
+        receiver: me,
+        receiver_ref: ref
+      })
+      |> case do
+        {:ok, _} -> :ok
+        {:error, event} ->
+          send(me, {:error, ref, event})
+      end
+    end)
 
     ref
   end
 
-  def ack(from, ref) do
-    send from, {:ack, ref}
-  end
+  def ack(nil, _), do: :ok
+  def ack(from, ref), do: send from, {:ack, ref}
 
 end
