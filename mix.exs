@@ -4,7 +4,7 @@ defmodule Exkml.Mixfile do
   def project do
     [
       app: :exkml,
-      version: "0.3.0",
+      version: "0.3.1",
       elixir: "~> 1.7",
       start_permanent: Mix.env == :prod,
       deps: deps(),
@@ -39,7 +39,7 @@ defmodule Exkml.Mixfile do
     [
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:gen_stage, "~> 0.8.0"},
-      {:saxy, "~> 0.7.0"}
+      {:saxy, github: "qcam/saxy", tag: "43828ee5c8c16c96348d15fcded44162dbf20c13"}
     ]
   end
 end
