@@ -196,14 +196,14 @@ defmodule Exkml do
     end
   end
 
-  textof "ExtendedData/SchemaData/SimpleData", state do
+  handle_empty_textof "ExtendedData/SchemaData/SimpleData", :unknown, state do
     %State{path: [{_, attributes} | _]} = state
     {name, value} = pluck_attribute(attributes, "name", text)
 
     put_attribute(state, name, value)
   end
 
-  textof "ExtendedData/Data/value", state do
+  handle_empty_textof "ExtendedData/Data/value", :unknown, state do
     %State{path: [_, {_, attributes} | _]} = state
     {name, value} = pluck_attribute(attributes, "name", text)
 
@@ -221,11 +221,11 @@ defmodule Exkml do
   textof "MultiGeometry/Polygon/outerBoundaryIs/LinearRing/coordinates", state, do: put_line(state, text)
   textof "MultiGeometry/Polygon/innerBoundaryIs/LinearRing/coordinates", state, do: put_line(state, text)
 
-  textof "name", state, do: put_attribute(state, "name", text)
-  textof "description", state, do: put_attribute(state, "description", text)
+  handle_empty_textof "name", "name", state, do: put_attribute(state, "name", text)
+  handle_empty_textof "description", "description", state, do: put_attribute(state, "description", text)
 
-  textof "TimeSpan/begin", state, do: put_attribute(state, "timespan_begin", text)
-  textof "TimeSpan/end", state, do: put_attribute(state, "timespan_end", text)
+  handle_empty_textof "TimeSpan/begin", "timespan_begin", state, do: put_attribute(state, "timespan_begin", text)
+  handle_empty_textof "TimeSpan/end", "timespan_end", state, do: put_attribute(state, "timespan_end", text)
 
 
   on_exit "Point", state,      do: state |> pop_geom |> pop_event
@@ -257,7 +257,6 @@ defmodule Exkml do
     |> push_geom(%Multigeometry{})
     |> push_event(event)
   end
-
 
   # Push the element name onto the stack, as well as the attributes onto the path
   on_enter _name, event, %State{placemark: %Placemark{}} = state do
@@ -314,8 +313,6 @@ defmodule Exkml do
         new_state
     end
   end
-
-
 
   def stage(binstream, chunk_size \\ 4096) do
     Exkml.Stage.start_link(binstream, chunk_size)

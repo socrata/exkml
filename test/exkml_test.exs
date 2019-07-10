@@ -367,12 +367,12 @@ defmodule ExkmlTest do
   #     :fprof.analyse({:dest, 'outfile.analysis'})
   #     send proc, :done
   #   end)
-
+  #
   #   out = "smoke/usbr"
   #   |> kml_fixture
   #   |> Exkml.stream!()
   #   |> Enum.take(1)
-
+  #
   #   receive do
   #     :done -> :ok
   #   end
