@@ -11,4 +11,9 @@
     <description>barbar</description>
     <Point><coordinates>103.0,1.5</coordinates></Point>
   </Placemark>
+  <Placemark>
+    <name></name>
+    <description></description>
+    <Point><coordinates>105.0,3.5</coordinates></Point>
+  </Placemark>
 </Folder></Document></kml>

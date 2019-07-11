@@ -8,6 +8,10 @@
         first value
       </value>
     </Data>
+    <Data name="empty_test">
+      <value>
+      </value>
+    </Data>
     <Data name="a_num">
       <value>
         2
