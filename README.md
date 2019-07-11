@@ -18,7 +18,7 @@ end
 ## Usage
 ```elixir
 File.stream!("something.kml", [], 2048)
-|> Exkml.placemarks!()
+|> Exkml.stream!()
 |> Enum.into([])
 |> IO.inspect
 ```

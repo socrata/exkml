@@ -5,6 +5,7 @@
 	<SimpleField name="Name" type="string"></SimpleField>
 	<SimpleField name="Description" type="string"></SimpleField>
 	<SimpleField name="a_string" type="string"></SimpleField>
+	<SimpleField name="empty_test" type="string"></SimpleField>
 	<SimpleField name="a_num" type="int"></SimpleField>
 	<SimpleField name="a_float" type="float"></SimpleField>
 	<SimpleField name="a_bool" type="boolean"></SimpleField>
@@ -12,6 +13,7 @@
   <Placemark>
 	<ExtendedData><SchemaData schemaUrl="#OGRGeoJSON">
 		<SimpleData name="a_string">first value</SimpleData>
+		<SimpleData name="empty_test"></SimpleData>
 		<SimpleData name="a_num">2</SimpleData>
 		<SimpleData name="a_float">2.2</SimpleData>
 		<SimpleData name="a_bool">false</SimpleData>
@@ -21,6 +23,7 @@
   <Placemark>
 	<ExtendedData><SchemaData schemaUrl="#OGRGeoJSON">
 		<SimpleData name="a_string">second value</SimpleData>
+    <SimpleData name="empty_test"></SimpleData>
 		<SimpleData name="a_num">2</SimpleData>
 		<SimpleData name="a_float">2.2</SimpleData>
 		<SimpleData name="a_bool">true</SimpleData>

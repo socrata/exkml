@@ -27,6 +27,13 @@ defmodule ExkmlTest do
           "name" => "bar",
           "description" => "barbar",
         }
+      },
+      %Placemark{
+        geoms: [%Point{x: 105.0, y: 3.5}],
+        attrs: %{
+          "name" => nil,
+          "description" => nil,
+        }
       }
     ]
   end
@@ -43,6 +50,21 @@ defmodule ExkmlTest do
     |> Enum.each(fn %{"timespan_begin" => tsb, "timespan_end" => tse} ->
       assert tsb
       assert tse
+    end)
+  end
+
+  test "empty timespan" do
+    "rainier"
+    |> kml_fixture
+    |> Exkml.stream!()
+    |> Enum.filter(fn
+      %{geoms: [%Exkml.Multigeometry{}]} -> true
+      _ -> false
+    end)
+    |> Enum.map(fn %{attrs: attrs} -> attrs end)
+    |> Enum.each(fn %{"timespan_begin" => tsb, "timespan_end" => tse} ->
+      assert tsb == nil
+      assert tse == nil
     end)
   end
 
@@ -67,7 +89,8 @@ defmodule ExkmlTest do
           "a_bool" => "false",
           "a_float" => "2.2",
           "a_num" => "2",
-          "a_string" => "first value"
+          "a_string" => "first value",
+          "empty_test" => nil
         }
       },
       %Placemark{
@@ -76,7 +99,8 @@ defmodule ExkmlTest do
           "a_bool" => "true",
           "a_float" => "2.2",
           "a_num" => "2",
-          "a_string" => "second value"
+          "a_string" => "second value",
+          "empty_test" => nil
         }
       }
     ]
@@ -259,7 +283,8 @@ defmodule ExkmlTest do
           "a_bool" => "false",
           "a_float" => "2.2",
           "a_num" => "2",
-          "a_string" => "first value"
+          "a_string" => "first value",
+          "empty_test" => nil
         }
       },
       %Placemark{
@@ -367,12 +392,12 @@ defmodule ExkmlTest do
   #     :fprof.analyse({:dest, 'outfile.analysis'})
   #     send proc, :done
   #   end)
-
+  #
   #   out = "smoke/usbr"
   #   |> kml_fixture
   #   |> Exkml.stream!()
   #   |> Enum.take(1)
-
+  #
   #   receive do
   #     :done -> :ok
   #   end
