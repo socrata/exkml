@@ -16,9 +16,10 @@ defmodule Exkml.Helpers do
   end
 
   defmacro textof(path, state, body) do
-    stack = path
-    |> String.split("/")
-    |> Enum.reverse
+    stack =
+      path
+      |> String.split("/")
+      |> Enum.reverse()
 
     quote do
       def handle_event(:characters, c, %{stack: unquote(stack)} = unquote(state)) do
@@ -37,9 +38,10 @@ defmodule Exkml.Helpers do
   end
 
   defmacro handle_empty_textof(path, attribute_name, state, body) do
-    stack = path
-    |> String.split("/")
-    |> Enum.reverse
+    stack =
+      path
+      |> String.split("/")
+      |> Enum.reverse()
 
     quote do
       def handle_event(:characters, c, %{stack: unquote(stack)} = unquote(state)) do
@@ -47,11 +49,24 @@ defmodule Exkml.Helpers do
         {:ok, unquote(body[:do])}
       end
 
-      def handle_event(:end_element, name, %{placemark: %Exkml.Placemark{attrs: attrs}, stack: [name | stack_tail] = unquote(stack), path: path} = state) do
+      def handle_event(
+            :end_element,
+            name,
+            %{
+              placemark: %Exkml.Placemark{attrs: attrs},
+              stack: [name | stack_tail] = unquote(stack),
+              path: path
+            } = state
+          ) do
         attr_name = Exkml.Helpers.get_attr_name(unquote(attribute_name), path)
 
         if !Map.has_key?(attrs, attr_name) do
-          {:ok, %Exkml.State{Exkml.put_attribute(state, attr_name, nil) | stack: stack_tail, path: tl(path)}}
+          {:ok,
+           %Exkml.State{
+             Exkml.put_attribute(state, attr_name, nil)
+             | stack: stack_tail,
+               path: tl(path)
+           }}
         else
           {:ok, %Exkml.State{state | stack: stack_tail, path: tl(path)}}
         end
