@@ -38,7 +38,7 @@ defmodule Exkml.Mixfile do
   defp deps do
     [
       {:ex_doc, ">= 0.0.0", only: :dev},
-      {:gen_stage, "~> 0.14"},
+      {:gen_stage, "~> 1.1.0"},
       {:saxy, "~> 0.9.1"}
     ]
   end
