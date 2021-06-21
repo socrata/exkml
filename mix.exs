@@ -6,7 +6,7 @@ defmodule Exkml.Mixfile do
       app: :exkml,
       version: "0.3.2",
       elixir: "~> 1.7",
-      start_permanent: Mix.env == :prod,
+      start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: description(),
       package: package()
@@ -38,7 +38,7 @@ defmodule Exkml.Mixfile do
   defp deps do
     [
       {:ex_doc, ">= 0.0.0", only: :dev},
-      {:gen_stage, "~> 0.8.0"},
+      {:gen_stage, "~> 1.1.0"},
       {:saxy, "~> 0.9.1"}
     ]
   end
