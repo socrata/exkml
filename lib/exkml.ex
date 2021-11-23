@@ -45,8 +45,8 @@ defmodule Exkml do
 
   def str_to_point(point_str) do
     point_str
-    |> String.trim
     |> String.split(",")
+    |> Enum.map(&String.trim/1)
     |> do_str_to_point
     |> case do
       :error -> {:error, "Invalid point #{point_str}"}
