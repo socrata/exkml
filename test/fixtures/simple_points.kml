@@ -18,7 +18,7 @@
 		<SimpleData name="a_float">2.2</SimpleData>
 		<SimpleData name="a_bool">false</SimpleData>
 	</SchemaData></ExtendedData>
-      <Point><coordinates>102.0,0.5</coordinates></Point>
+      <Point><coordinates>102.0, 0.5</coordinates></Point>
   </Placemark>
   <Placemark>
 	<ExtendedData><SchemaData schemaUrl="#OGRGeoJSON">
@@ -28,6 +28,6 @@
 		<SimpleData name="a_float">2.2</SimpleData>
 		<SimpleData name="a_bool">true</SimpleData>
 	</SchemaData></ExtendedData>
-      <Point><coordinates>103.0,1.5</coordinates></Point>
+      <Point><coordinates>103.0, 1.5</coordinates></Point>
   </Placemark>
 </Folder></Document></kml>
