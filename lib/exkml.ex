@@ -24,62 +24,71 @@ defmodule Exkml do
     defexception [:message, :event]
   end
 
-  defp do_str_to_point([x, y]) do
-    with {x, _} <- Float.parse(x),
-      {y, _} <- Float.parse(y) do
-      {:ok, %Point{x: x, y: y}}
-    else
-      _ -> :error
-    end
-  end
-
-  defp do_str_to_point([x, y, z]) do
-    with {x, _} <- Float.parse(x),
-      {y, _} <- Float.parse(y),
-      {z, _} <- Float.parse(z) do
-      {:ok, %Point{x: x, y: y, z: z}}
-    else
-      _ -> :error
-    end
-  end
-
   def str_to_point(point_str) do
-    point_str
-    |> String.split(",")
-    |> Enum.map(&String.trim/1)
-    |> do_str_to_point
-    |> case do
-      :error -> {:error, "Invalid point #{point_str}"}
-      {:ok, _} = ok -> ok
+    case extract_point(point_str) do
+      {pt, remainder} ->
+        if String.trim(remainder) == "" do
+          {:ok, pt}
+        else
+          {:error, "Invalid point #{point_str}"}
+        end
+      :error ->
+        {:error, "Invalid point #{point_str}"}
+    end
+  end
+
+  defp parse_comma(comma_str) do
+    case String.trim_leading(comma_str) do
+      <<",", rest::binary>> ->
+        {:ok, rest}
+      _ ->
+        :error
+    end
+  end
+
+  defp extract_point(point_str) do
+    with {x, remainder} <- Float.parse(String.trim_leading(point_str)),
+         {:ok, remainder} <- parse_comma(remainder),
+         {y, remainder} <- Float.parse(String.trim_leading(remainder)) do
+      case parse_comma(remainder) do
+        {:ok, remainder} ->
+          with {z, remainder} <- Float.parse(String.trim_leading(remainder)) do
+            {%Point{x: x, y: y, z: z}, remainder}
+          end
+        :error ->
+          {%Point{x: x, y: y}, remainder}
+      end
     end
   end
 
   defp str_to_line(line_str) do
-    line_str
-    |> :binary.split([" ", "\n"], [:global])
-    |> Enum.map(&String.trim/1)
-    |> extract_many(&str_to_point/1, fn "" -> false; _ -> true end)
-    |> case do
-      {:ok, points} -> {:ok, %Line{points: points}}
-      err -> err
+    case extract_line(line_str) do
+      {line, remainder} ->
+        if String.trim(remainder) == "" do
+          {:ok, %Line{points: line}}
+        else
+          {:error, "Invalid line #{line_str}"}
+        end
+      :error ->
+        {:error, "Invalid line #{line_str}"}
     end
   end
 
-  defp extract_many(things, fun, test) do
-    things
-    |> Enum.reduce_while([], fn thing, acc ->
-      if test.(thing) do
-        case fun.(thing) do
-          {:ok, shape_like} -> {:cont, [shape_like | acc]}
-          {:error, _} = e -> {:halt, e}
+  defp extract_line(line_str) do
+    case extract_point(line_str) do
+      {first_point, remainder} ->
+        remainder = String.trim_leading(remainder)
+        if remainder == "" do
+          {[first_point], remainder}
+        else
+          case extract_line(remainder) do
+            {rest_of_points, remainder} ->
+              {[first_point | rest_of_points], remainder}
+            :error -> :error
+          end
         end
-      else
-        {:cont, acc}
-      end
-    end)
-    |> case do
-      {:error, _} = e -> e
-      shapes -> {:ok, Enum.reverse(shapes)}
+      :error ->
+        :error
     end
   end
 
