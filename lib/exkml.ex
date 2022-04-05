@@ -129,8 +129,9 @@ defmodule Exkml do
     |> case do
       nil -> nil
       chars ->
-        key   = String.trim(chars)
-        value = String.trim(value)
+        key = String.trim(chars)
+        trimmed_value = String.trim(value)
+        value = if trimmed_value == "", do: nil, else: trimmed_value
 
         {key, value}
     end
