@@ -380,14 +380,18 @@ defmodule Exkml do
     me = self()
     ref = make_ref()
     spawn_link(fn ->
-      Saxy.parse_stream(binstream, __MODULE__, %State{
-        receiver: me,
-        receiver_ref: ref
-      })
-      |> case do
-        {:ok, _} -> :ok
-        {:error, event} ->
-          send(me, {:error, ref, event})
+      try do
+        Saxy.parse_stream(binstream, __MODULE__, %State{
+          receiver: me,
+          receiver_ref: ref
+        })
+        |> case do
+          {:ok, _} -> :ok
+          {:error, event} ->
+            send(me, {:error, ref, event})
+        end
+      catch
+        kind, error -> send(me, {:error, ref, {kind, error}})
       end
     end)
 
