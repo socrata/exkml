@@ -339,6 +339,24 @@ defmodule ExkmlTest do
     end
   end
 
+  @tag timeout: 1000
+  test "unexpected element start" do
+    assert_raise Exkml.KMLParseError, ~r"ended prematurely", fn ->
+      ["""
+      <?xml version="1.0" encoding="UTF-8"?>
+      <kml xmlns="http://www.opengis.net/kml/2.2">
+        <Document>
+          <name>KML Sample</name>
+          <Placemark>
+            <Point>
+            <Point>
+              <coordinates>-122.0822035425683,37.42228990140251,0</coordinates>
+            </Point>
+      """]
+      |> Exkml.stream!()
+      |> Enum.into([])
+    end
+  end
 
   Enum.each([
     {"boundaries", [Multigeometry], 163},
